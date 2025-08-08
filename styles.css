@@ -1,16 +1,16 @@
 /* CSS Custom Properties */
 :root {
-  /* Colors */
-  --color-primary: #d2001f;
-  --color-primary-dark: #b8001c;
-  --color-secondary: #ff6b35;
-  --color-accent: #ffa500;
+  /* Colors - Based on Rage Cycles Logo */
+  --color-primary: #4eb5a6;
+  --color-primary-dark: #3a9688;
+  --color-secondary: #5fc4b4;
+  --color-accent: #7dd3c0;
   --color-text: #1a1a1a;
   --color-text-light: #666;
   --color-text-white: #ffffff;
   --color-bg: #ffffff;
   --color-bg-dark: #1a1a1a;
-  --color-bg-section: #f8f8f8;
+  --color-bg-section: #f0fbfa;
   --color-border: #e0e0e0;
   
   /* Typography */
@@ -140,6 +140,28 @@ img {
   font-size: var(--font-size-2xl);
   font-weight: 700;
   color: var(--color-primary);
+}
+
+.header__logo-img {
+  height: 50px;
+  width: auto;
+  transition: var(--transition);
+}
+
+.header__logo-img:hover {
+  transform: scale(1.05);
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 
 /* Navigation */
