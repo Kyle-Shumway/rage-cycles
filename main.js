@@ -10,6 +10,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update today's hours
     updateTodaysHours();
     
+    // Update next Friday date
+    updateNextFridayDate();
+    
     // Initialize lazy loading for images
     initLazyLoading();
 });
@@ -152,6 +155,47 @@ function updateTodaysHours() {
     statusIndicator.setAttribute('aria-label', isOpen ? 'Currently open' : 'Currently closed');
     
     todayHoursElement.appendChild(statusIndicator);
+}
+
+/**
+ * Update next Friday date display
+ */
+function updateNextFridayDate() {
+    const nextFridayElement = document.getElementById('next-friday-date');
+    if (!nextFridayElement) return;
+    
+    const today = new Date();
+    const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, ... 5 = Friday, 6 = Saturday
+    
+    let daysUntilFriday;
+    if (currentDay <= 5) { // Sunday through Friday
+        daysUntilFriday = 5 - currentDay; // Days until next Friday
+    } else { // Saturday
+        daysUntilFriday = 6; // Days until next Friday (next week)
+    }
+    
+    // If today is Friday, show "Today" if it's before evening, otherwise next Friday
+    if (currentDay === 5) {
+        const currentHour = today.getHours();
+        if (currentHour < 18) { // Before 6 PM
+            nextFridayElement.textContent = 'Today';
+            return;
+        } else {
+            daysUntilFriday = 7; // Next Friday
+        }
+    }
+    
+    const nextFriday = new Date(today);
+    nextFriday.setDate(today.getDate() + daysUntilFriday);
+    
+    const options = { 
+        weekday: 'long', 
+        month: 'long', 
+        day: 'numeric'
+    };
+    
+    const formattedDate = nextFriday.toLocaleDateString('en-US', options);
+    nextFridayElement.textContent = formattedDate;
 }
 
 /**
@@ -307,6 +351,249 @@ function preloadCriticalResources() {
 
 // Initialize preloading
 document.addEventListener('DOMContentLoaded', preloadCriticalResources);
+
+// Contact Form Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    initContactForm();
+});
+
+/**
+ * Initialize contact form functionality
+ */
+function initContactForm() {
+    const contactForm = document.getElementById('contactForm');
+    if (!contactForm) return;
+    
+    contactForm.addEventListener('submit', handleFormSubmit);
+    
+    // Add real-time validation
+    const requiredFields = contactForm.querySelectorAll('[required]');
+    requiredFields.forEach(field => {
+        field.addEventListener('blur', validateField);
+        field.addEventListener('input', clearFieldError);
+    });
+    
+    // Phone number formatting
+    const phoneField = document.getElementById('phone');
+    if (phoneField) {
+        phoneField.addEventListener('input', formatPhoneNumber);
+    }
+}
+
+/**
+ * Handle form submission
+ */
+async function handleFormSubmit(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const submitButton = form.querySelector('.form__submit');
+    const submitText = form.querySelector('.form__submit-text');
+    const submitLoading = form.querySelector('.form__submit-loading');
+    const successMessage = form.querySelector('.form__success');
+    
+    // Validate all fields
+    if (!validateForm(form)) {
+        return;
+    }
+    
+    // Show loading state
+    submitButton.disabled = true;
+    submitText.style.display = 'none';
+    submitLoading.style.display = 'block';
+    
+    try {
+        // Collect form data
+        const formData = new FormData(form);
+        const data = {
+            firstName: formData.get('firstName'),
+            lastName: formData.get('lastName'),
+            email: formData.get('email'),
+            phone: formData.get('phone') || 'Not provided',
+            service: formData.get('service') || 'Not specified',
+            message: formData.get('message'),
+            timestamp: new Date().toLocaleString()
+        };
+        
+        // Set reply-to email for Formspree
+        document.getElementById('_replyto').value = data.email;
+        
+        // Send email using EmailJS or similar service
+        await sendContactEmail(data);
+        
+        // Show success message
+        successMessage.style.display = 'block';
+        form.reset();
+        
+        // Scroll to success message
+        successMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+    } catch (error) {
+        console.error('Form submission error:', error);
+        alert('Sorry, there was an error sending your message. Please try calling us directly at (480) 968-8116.');
+    } finally {
+        // Reset button state
+        submitButton.disabled = false;
+        submitText.style.display = 'block';
+        submitLoading.style.display = 'none';
+    }
+}
+
+/**
+ * Send contact email via Formspree
+ */
+async function sendContactEmail(data) {
+    const formspreeEndpoint = 'https://formspree.io/f/mblkqpbo';
+    
+    // Prepare form data for Formspree
+    const formData = new FormData();
+    formData.append('firstName', data.firstName);
+    formData.append('lastName', data.lastName);
+    formData.append('email', data.email);
+    formData.append('phone', data.phone);
+    formData.append('service', data.service);
+    formData.append('message', data.message);
+    formData.append('_subject', `New Contact Form Submission from ${data.firstName} ${data.lastName}`);
+    
+    // Add formatted message for better email readability
+    const formattedMessage = `
+Contact Form Submission
+======================
+
+Name: ${data.firstName} ${data.lastName}
+Email: ${data.email}
+Phone: ${data.phone}
+Service Interest: ${data.service}
+Submitted: ${data.timestamp}
+
+Message:
+${data.message}
+
+---
+This message was sent via the Rage Cycles website contact form.
+    `.trim();
+    
+    formData.append('_message', formattedMessage);
+    
+    const response = await fetch(formspreeEndpoint, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'Accept': 'application/json'
+        }
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send message');
+    }
+    
+    return response.json();
+}
+
+/**
+ * Validate entire form
+ */
+function validateForm(form) {
+    let isValid = true;
+    const requiredFields = form.querySelectorAll('[required]');
+    
+    requiredFields.forEach(field => {
+        if (!validateField({ target: field })) {
+            isValid = false;
+        }
+    });
+    
+    return isValid;
+}
+
+/**
+ * Validate individual field
+ */
+function validateField(e) {
+    const field = e.target;
+    const value = field.value.trim();
+    const fieldName = field.name;
+    const errorElement = document.getElementById(fieldName + 'Error');
+    
+    let isValid = true;
+    let errorMessage = '';
+    
+    // Required field validation
+    if (field.required && !value) {
+        isValid = false;
+        errorMessage = 'This field is required.';
+    }
+    // Email validation
+    else if (field.type === 'email' && value) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) {
+            isValid = false;
+            errorMessage = 'Please enter a valid email address.';
+        }
+    }
+    // Phone validation (optional but if provided, should be valid)
+    else if (field.type === 'tel' && value) {
+        const phoneRegex = /^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/;
+        if (!phoneRegex.test(value.replace(/\s/g, ''))) {
+            isValid = false;
+            errorMessage = 'Please enter a valid phone number.';
+        }
+    }
+    // Message length validation
+    else if (fieldName === 'message' && value && value.length < 10) {
+        isValid = false;
+        errorMessage = 'Please provide a more detailed message (at least 10 characters).';
+    }
+    
+    // Show/hide error message
+    if (errorElement) {
+        if (!isValid) {
+            errorElement.textContent = errorMessage;
+            errorElement.classList.add('form__error--show');
+            if (field.type === 'textarea') {
+                field.classList.add('form__textarea--invalid');
+            } else {
+                field.classList.add('form__input--invalid');
+            }
+        } else {
+            errorElement.classList.remove('form__error--show');
+            field.classList.remove('form__input--invalid', 'form__textarea--invalid');
+        }
+    }
+    
+    return isValid;
+}
+
+/**
+ * Clear field error on input
+ */
+function clearFieldError(e) {
+    const field = e.target;
+    const fieldName = field.name;
+    const errorElement = document.getElementById(fieldName + 'Error');
+    
+    if (errorElement) {
+        errorElement.classList.remove('form__error--show');
+        field.classList.remove('form__input--invalid', 'form__textarea--invalid');
+    }
+}
+
+/**
+ * Format phone number input
+ */
+function formatPhoneNumber(e) {
+    const input = e.target;
+    const value = input.value.replace(/\D/g, '');
+    
+    if (value.length >= 6) {
+        input.value = `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`;
+    } else if (value.length >= 3) {
+        input.value = `(${value.slice(0, 3)}) ${value.slice(3)}`;
+    } else {
+        input.value = value;
+    }
+}
 
 // Service Worker registration (optional - for caching)
 if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
