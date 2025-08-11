@@ -87,30 +87,31 @@ function initSmoothScrolling() {
         link.addEventListener('click', function(e) {
             const targetId = this.getAttribute('href');
             
-            // Skip if it's just '#'
-            if (targetId === '#') return;
+            // Handle logo click - scroll to top
+            if (targetId === '#') {
+                e.preventDefault();
+                document.documentElement.scrollTop = 0;
+                return;
+            }
             
             const targetElement = document.querySelector(targetId);
             
             if (targetElement) {
                 e.preventDefault();
                 
-                const headerHeight = document.querySelector('.header')?.offsetHeight || 0;
-                const targetPosition = targetElement.offsetTop - headerHeight - 20;
+                // Get the exact position we want to scroll to
+                const elementRect = targetElement.getBoundingClientRect();
+                const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const headerHeight = 70; // Fixed header height
                 
+                // Calculate target position: current scroll + element position - header height
+                const targetScrollTop = currentScrollTop + elementRect.top - headerHeight;
+                
+                // Smooth scroll to target position
                 window.scrollTo({
-                    top: targetPosition,
+                    top: targetScrollTop,
                     behavior: 'smooth'
                 });
-                
-                // Update focus for accessibility
-                targetElement.setAttribute('tabindex', '-1');
-                targetElement.focus();
-                
-                // Remove tabindex after focus is lost
-                targetElement.addEventListener('blur', function() {
-                    this.removeAttribute('tabindex');
-                }, { once: true });
             }
         });
     });
